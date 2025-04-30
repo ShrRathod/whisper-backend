@@ -1,13 +1,36 @@
 import os
-from flask import Flask
+import tempfile
+from flask import Flask, request, jsonify
+import whisper
 
 app = Flask(__name__)
+model = whisper.load_model("base")  # You can change to 'small', 'medium', etc.
 
 @app.route('/')
 def home():
     return "Whisper backend is live!"
 
+@app.route('/transcribe', methods=['POST'])
+def transcribe():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part in request'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp_audio:
+            file.save(temp_audio.name)
+            result = model.transcribe(temp_audio.name)
+            os.remove(temp_audio.name)
+
+        return jsonify({'transcription': result['text']})
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == "__main__":
-    # Get the port from the environment variable, Render provides this automatically
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT is not set
-    app.run(host="0.0.0.0", port=port)  # Bind to 0.0.0.0 to make it accessible externally
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
