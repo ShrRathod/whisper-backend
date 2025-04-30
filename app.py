@@ -41,5 +41,5 @@ def transcribe_audio():
     return jsonify({'transcription': result['text']})
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, threaded=True)
+    port = int(os.environ.get("PORT", 5000))  # This allows Render to set the port
+    app.run(host='0.0.0.0', port=port, threaded=True)
