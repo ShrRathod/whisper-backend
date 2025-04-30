@@ -1,18 +1,16 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 import whisper
 import os
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = Flask(__name__)
 
-# Load Whisper model once
-model = whisper.load_model("base")
+# Use lighter model for limited resources
+model = whisper.load_model("tiny")
 
-# Home route to serve the frontend
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    return render_template('index.html')  # Correctly serve from templates folder
 
-# Transcription endpoint
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
     if 'audio' not in request.files:
@@ -31,7 +29,6 @@ def transcribe():
     finally:
         os.remove(audio_path)
 
-# Placeholder: Summarization endpoint
 @app.route('/summarize', methods=['POST'])
 def summarize():
     data = request.get_json()
@@ -39,7 +36,6 @@ def summarize():
     summary = f"(Mock summary for): {text[:50]}..."
     return jsonify({"summary": summary})
 
-# Placeholder: Speaker identification
 @app.route('/identify-speakers', methods=['POST'])
 def identify_speakers():
     data = request.get_json()
@@ -47,18 +43,15 @@ def identify_speakers():
     speakers = [{"speaker": "Speaker 1", "text": text}]
     return jsonify({"speakers": speakers})
 
-# Placeholder: Feedback collection
 @app.route('/feedback', methods=['POST'])
 def feedback():
     data = request.get_json()
     print("Received feedback:", data)
     return jsonify({"status": "Feedback received"})
 
-# Route listing (for debug)
 @app.route('/routes')
 def list_routes():
     return jsonify([str(rule) for rule in app.url_map.iter_rules()])
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
