@@ -9,7 +9,7 @@ model = whisper.load_model("tiny")
 
 @app.route('/')
 def index():
-    return render_template('index.html')  # Correctly serve from templates folder
+    return render_template('index.html')
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe():
