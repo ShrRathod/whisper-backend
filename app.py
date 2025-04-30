@@ -1,64 +1,64 @@
-import os
-import tempfile
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, send_from_directory
 import whisper
+import os
 
-app = Flask(__name__)
-model = whisper.load_model("tiny")
+app = Flask(__name__, static_folder='.', static_url_path='')
 
-@app.route("/")
-def home():
-    return render_template("index.html")  # Serve frontend
+# Load Whisper model once
+model = whisper.load_model("base")
 
-@app.route("/upload", methods=["POST"])
-def upload_audio():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
+# Home route to serve the frontend
+@app.route('/')
+def index():
+    return send_from_directory('.', 'index.html')
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+# Transcription endpoint
+@app.route('/transcribe', methods=['POST'])
+def transcribe():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file provided'}), 400
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as temp:
-        file.save(temp.name)
-        result = model.transcribe(temp.name)
+    audio_file = request.files['audio']
+    audio_path = os.path.join("temp", audio_file.filename)
+    os.makedirs("temp", exist_ok=True)
+    audio_file.save(audio_path)
 
-    transcription = result["text"]
-    return jsonify({"transcription": transcription})
+    try:
+        result = model.transcribe(audio_path)
+        return jsonify({'transcription': result['text']})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    finally:
+        os.remove(audio_path)
 
-@app.route("/summarize", methods=["POST"])
+# Placeholder: Summarization endpoint
+@app.route('/summarize', methods=['POST'])
 def summarize():
     data = request.get_json()
-    transcript = data.get("transcript")
-    if not transcript:
-        return jsonify({"error": "No transcript provided"}), 400
-
-    summary = transcript[:150] + "..." if len(transcript) > 150 else transcript
+    text = data.get("text", "")
+    summary = f"(Mock summary for): {text[:50]}..."
     return jsonify({"summary": summary})
 
-@app.route("/identify-speakers", methods=["POST"])
+# Placeholder: Speaker identification
+@app.route('/identify-speakers', methods=['POST'])
 def identify_speakers():
     data = request.get_json()
-    transcript = data.get("transcript")
-    if not transcript:
-        return jsonify({"error": "No transcript provided"}), 400
+    text = data.get("text", "")
+    speakers = [{"speaker": "Speaker 1", "text": text}]
+    return jsonify({"speakers": speakers})
 
-    fake_speakers = [
-        {"speaker": "Speaker 1", "text": transcript[:len(transcript)//2]},
-        {"speaker": "Speaker 2", "text": transcript[len(transcript)//2:]},
-    ]
-    return jsonify({"speakers": fake_speakers})
-
-@app.route("/feedback", methods=["POST"])
-def collect_feedback():
+# Placeholder: Feedback collection
+@app.route('/feedback', methods=['POST'])
+def feedback():
     data = request.get_json()
-    feedback = data.get("feedback")
-    if not feedback:
-        return jsonify({"error": "No feedback provided"}), 400
+    print("Received feedback:", data)
+    return jsonify({"status": "Feedback received"})
 
-    print("Received feedback:", feedback)
-    return jsonify({"message": "Feedback received!"}), 200
+# Route listing (for debug)
+@app.route('/routes')
+def list_routes():
+    return jsonify([str(rule) for rule in app.url_map.iter_rules()])
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
