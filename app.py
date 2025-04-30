@@ -1,10 +1,15 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, render_template, jsonify
 import whisper
 import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
 
-# Use lighter model for limited resources
+# Ensure upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Load tiny model once at startup
 model = whisper.load_model("tiny")
 
 @app.route('/')
@@ -12,46 +17,25 @@ def index():
     return render_template('index.html')
 
 @app.route('/transcribe', methods=['POST'])
-def transcribe():
+def transcribe_audio():
+    print("Received transcription request.")
+
     if 'audio' not in request.files:
-        return jsonify({'error': 'No audio file provided'}), 400
+        return jsonify({'error': 'No file part'}), 400
 
-    audio_file = request.files['audio']
-    audio_path = os.path.join("temp", audio_file.filename)
-    os.makedirs("temp", exist_ok=True)
-    audio_file.save(audio_path)
+    file = request.files['audio']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
 
-    try:
-        result = model.transcribe(audio_path)
-        return jsonify({'transcription': result['text']})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        os.remove(audio_path)
+    filename = secure_filename(file.filename)
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+    print(f"Saved file to {filepath}")
 
-@app.route('/summarize', methods=['POST'])
-def summarize():
-    data = request.get_json()
-    text = data.get("text", "")
-    summary = f"(Mock summary for): {text[:50]}..."
-    return jsonify({"summary": summary})
-
-@app.route('/identify-speakers', methods=['POST'])
-def identify_speakers():
-    data = request.get_json()
-    text = data.get("text", "")
-    speakers = [{"speaker": "Speaker 1", "text": text}]
-    return jsonify({"speakers": speakers})
-
-@app.route('/feedback', methods=['POST'])
-def feedback():
-    data = request.get_json()
-    print("Received feedback:", data)
-    return jsonify({"status": "Feedback received"})
-
-@app.route('/routes')
-def list_routes():
-    return jsonify([str(rule) for rule in app.url_map.iter_rules()])
+    # Transcribe audio using the global model
+    result = model.transcribe(filepath)
+    print("Transcription complete.")
+    return jsonify({'transcription': result['text']})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    app.run(debug=False, host='0.0.0.0', port=10000, threaded=True)
