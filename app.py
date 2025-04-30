@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify, render_template
 import whisper
 
 app = Flask(__name__)
-model = whisper.load_model("base")  # or "small", "medium", etc.
+model = whisper.load_model("tiny")
 
 @app.route("/")
 def home():
