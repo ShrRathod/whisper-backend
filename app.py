@@ -1,33 +1,13 @@
-from flask import Flask, request, jsonify
-import whisper
 import os
-import tempfile
+from flask import Flask
 
 app = Flask(__name__)
-model = whisper.load_model("base")  # use "tiny" if base is too slow
 
-@app.route('/analyze', methods=['POST'])
-def analyze():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
+@app.route('/')
+def home():
+    return "Whisper backend is live!"
 
-    audio_file = request.files['file']
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp:
-        audio_file.save(temp.name)
-        result = model.transcribe(temp.name)
-        os.remove(temp.name)
-
-    # Replace with your own logic later
-    summary = result['text'][:200]
-    keywords = [word for word in result['text'].split()[:5]]
-    sentiment = "Neutral"
-
-    return jsonify({
-        'summary': summary,
-        'keywords': keywords,
-        'sentiment': sentiment
-    })
-
-if __name__ == '__main__':
-    app.run()
+if __name__ == "__main__":
+    # Get the port from the environment variable, Render provides this automatically
+    port = int(os.environ.get("PORT", 5000))  # Default to 5000 if PORT is not set
+    app.run(host="0.0.0.0", port=port)  # Bind to 0.0.0.0 to make it accessible externally
